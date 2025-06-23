@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<title>Tokyo 1km Mesh Population Map</title>
+		<meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+		<link
+			href="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.css"
+			rel="stylesheet"
+		/>
+		<style>
+			body {
+				margin: 0;
+				padding: 0;
+			}
+			#map {
+				width: 100%;
+				height: 100vh;
+			}
+			#layer-select {
+				position: absolute;
+				top: 10px;
+				left: 10px;
+				z-index: 1;
+				background: white;
+				padding: 5px;
+				border-radius: 4px;
+				font-size: 16px;
+			}
+			#legend {
+				position: absolute;
+				bottom: 30px;
+				left: 10px;
+				z-index: 1;
+				background: rgba(255,255,255,0.97);
+				padding: 14px 20px 10px 20px;
+				border-radius: 8px;
+				font-size: 15px;
+				box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+				min-width: 220px;
+				max-width: 320px;
+			}
+			.legend-title {
+				font-weight: bold;
+				margin-bottom: 10px;
+				font-size: 16px;
+				letter-spacing: 0.5px;
+			}
+			.legend-scale {
+				display: flex;
+				align-items: center;
+				margin-bottom: 6px;
+			}
+			.legend-gradient {
+				width: 180px;
+				height: 18px;
+				background: linear-gradient(to right, #f0f9e8, #bae4bc 25%, #7bccc4 50%, #2b8cbe 75%, #08589e 100%);
+				border: 1px solid #bbb;
+				border-radius: 4px;
+				margin: 0 12px 0 0;
+				flex-shrink: 0;
+			}
+			.legend-labels {
+				display: flex;
+				justify-content: space-between;
+				margin-top: 4px;
+				margin-left: 0px;
+				width: 180px;
+				font-size: 14px;
+				color: #222;
+				font-family: monospace, monospace;
+				font-weight: bold;
+				background: rgba(255,255,255,0.85);
+				border-radius: 4px;
+				padding: 2px 2px 1px 2px;
+				box-shadow: 0 1px 2px rgba(0,0,0,0.07);
+			}
+			.legend-unit {
+				margin-left: 8px;
+				color: #555;
+				font-size: 13px;
+			}
+		</style>
+	</head>
+	<body>
+		<select id="layer-select">
+			<option value="now">2020年</option>
+			<option value="old">1995年</option>
+		</select>
+		<div id="map"></div>
+		<div id="legend"></div>
+		<script src="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
+		<script>
+			const map = new maplibregl.Map({
+				container: 'map',
+				style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+				center: [139.95, 35.75],
+				zoom: 10
+			});
+
+			const sources = {
+				now: {
+					url: 'MESH05239_merged_now.geojson',
+					column: 'T001100001',
+					label: '2020年',
+					levels: [0, 5000, 10000, 15000, 20000],
+					colors: ['#f0f9e8', '#bae4bc', '#7bccc4', '#2b8cbe', '#08589e']
+				},
+				old: {
+					url: 'MESH05239_merged_old.geojson',
+					column: 'T000751001',
+					label: '1995年',
+					levels: [0, 5000, 10000, 15000, 20000],
+					colors: ['#f0f9e8', '#bae4bc', '#7bccc4', '#2b8cbe', '#08589e']
+				}
+			};
+
+			function updateLegend(selected) {
+				const src = sources[selected];
+				const legend = document.getElementById('legend');
+				const gradColors = src.colors.join(', ');
+				let labelSpans = '';
+				for (let i = 0; i < src.levels.length; i++) {
+					let label = src.levels[i].toLocaleString();
+					if (i === src.levels.length - 1) label += '+';
+					labelSpans += `<span style="text-align:center;flex:1;min-width:32px;">${label}</span>`;
+				}
+				legend.innerHTML = `
+					<div class="legend-title">${src.label} 凡例</div>
+					<div class="legend-scale">
+						<div class="legend-gradient" style="background: linear-gradient(to right, ${gradColors});"></div>
+						<span class="legend-unit">人口</span>
+					</div>
+				`;
+			}
+
+			map.on('load', () => {
+				map.addSource('tokyo', {
+					type: 'geojson',
+					data: sources.now.url
+				});
+
+				map.addLayer({
+					id: 'population-layer',
+					type: 'fill',
+					source: 'tokyo',
+					paint: {
+						'fill-color': [
+							'interpolate',
+							['linear'],
+							['get', sources.now.column],
+							...sources.now.levels.flatMap((v, i) => [v, sources.now.colors[i]])
+						],
+						'fill-opacity': 0.75,
+						'fill-outline-color': '#ffffff'
+					}
+				});
+				fetch(sources.now.url)
+				  .then(res => res.json())
+				  .then(geojson => {
+					const bbox = getGeoJsonBbox(geojson);
+					if (bbox) map.fitBounds(bbox, {padding: 30, duration: 0});
+				  });
+				updateLegend('now');
+			});
+
+			function getGeoJsonBbox(geojson) {
+				if (!geojson || !geojson.features || geojson.features.length === 0) return null;
+				let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+				geojson.features.forEach(f => {
+					if (!f.geometry) return;
+					const coords = (f.geometry.type === 'Polygon') ? [f.geometry.coordinates] : f.geometry.coordinates;
+					coords.flat(2).forEach(([x, y]) => {
+						if (typeof x === 'number' && typeof y === 'number') {
+							if (x < minX) minX = x;
+							if (y < minY) minY = y;
+							if (x > maxX) maxX = x;
+							if (y > maxY) maxY = y;
+						}
+					});
+				});
+				if (minX < Infinity && minY < Infinity && maxX > -Infinity && maxY > -Infinity) {
+					return [[minX, minY], [maxX, maxY]];
+				}
+				return null;
+			}
+
+			document.getElementById('layer-select').addEventListener('change', function(e) {
+				const selected = e.target.value;
+				const src = sources[selected];
+				map.getSource('tokyo').setData(src.url);
+				map.setPaintProperty('population-layer', 'fill-color', [
+					'interpolate',
+					['linear'],
+					['get', src.column],
+					...src.levels.flatMap((v, i) => [v, src.colors[i]])
+				]);
+				fetch(src.url)
+				  .then(res => res.json())
+				  .then(geojson => {
+					const bbox = getGeoJsonBbox(geojson);
+					if (bbox) map.fitBounds(bbox, {padding: 30, duration: 0});
+				  });
+				updateLegend(selected);
+			});
+		</script>
+	</body>
+</html>
