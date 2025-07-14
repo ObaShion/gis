@@ -3,60 +3,55 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>イランの声 - インタラクティブマップ</title>
+    <title>Koe</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="container">
-        <header class="header">
-            <h1>イランの記憶 - インタラクティブマップ</h1>
-        </header>
-
-        <div class="main-content">
-            <div class="map-container">
-                <div id="map"></div>
-                <div class="map-controls">
-                    <button id="toggleMapType" class="control-btn">
-                        <span id="mapTypeText">航空写真</span>
-                    </button>
-                    <button id="toggleHeatmap" class="control-btn">
-                        <span id="heatmapText">ヒートマップ表示</span>
-                    </button>
-                </div>
+    <div class="main-content">
+        <div class="sidebar">
+            <!-- <h1>コメント一覧</h1> -->
+            <div id="commentsList" class="comments-list">
+                <!-- 投稿がここに動的に追加されます -->
             </div>
-
-            <div class="sidebar">
-                <div class="filter-section">
-                    <h3>フィルター</h3>
-                    <div class="tag-filter">
-                        <label for="tagSelect">タグで絞り込み:</label>
-                        <select id="tagSelect">
-                            <option value="">すべてのタグ</option>
-                        </select>
-                    </div>
-                    <div class="search-box">
-                        <input type="text" id="searchInput" placeholder="コメントを検索...">
-                    </div>
-                </div>
-
-                <div class="comments-section">
-                    <h3>戦争の記憶一覧</h3>
-                    <div id="commentsList" class="comments-list">
-                        <!-- 戦争の記憶がここに動的に追加されます -->
-                    </div>
-                </div>
+        </div>
+        
+        <div class="map-container">
+            <div id="map"></div>
+            <div class="map-controls">
+                <button id="toggleMapType" class="control-btn" onclick="toggleMapType()">
+                    <span id="mapTypeText">航空写真</span>
+                </button>
             </div>
         </div>
 
-        <!-- 戦争の記憶詳細モーダル -->
-        <div id="commentModal" class="modal">
-            <div class="modal-content">
-                <span class="close">&times;</span>
-                <div id="modalContent">
-                    <!-- モーダル内容がここに動的に追加されます -->
+       
+    </div>
+
+    <!-- 投稿詳細モーダル -->
+    <div id="commentModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <div id="modalContent">
+                <!-- モーダル内容がここに動的に追加されます -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- コメント投稿モーダル -->
+    <div id="commentPostModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3>コメントを投稿</h3>
+            <div class="comment-form">
+                <textarea id="commentText" placeholder="あなたの思いを共有してください..."></textarea>
+                <div class="emotion-buttons">
+                    <button class="emotion-btn" data-emotion="怒り">😠 怒り</button>
+                    <button class="emotion-btn" data-emotion="悲しみ">😢 悲しみ</button>
+                    <button class="emotion-btn" data-emotion="希望">🙏 希望</button>
+                    <button class="emotion-btn" data-emotion="共感">💙 共感</button>
                 </div>
+                <button id="postCommentBtn" class="post-btn">投稿する</button>
             </div>
         </div>
     </div>
